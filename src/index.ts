@@ -19,7 +19,7 @@ import { paint } from "./html-renderer";
 
 const createGameObject = (x: number, y: number) => ({ x, y });
 
-const player$ = combineLatest(
+const player$ = combineLatest([
   of({
     ...createGameObject(gameSize - 2, gameSize / 2 - 1),
     score: 0,
@@ -28,8 +28,8 @@ const player$ = combineLatest(
   fromEvent(document, "keyup").pipe(
     startWith({ code: "" }),
     map((e: any) => e.code)
-  )
-).pipe(
+  ),
+]).pipe(
   map(
     ([player, key]) => (
       key === "ArrowLeft"
@@ -42,10 +42,10 @@ const player$ = combineLatest(
   )
 );
 
-const ball$ = combineLatest(
+const ball$ = combineLatest([
   of({ ...createGameObject(gameSize / 2, gameSize - 3), dirX: 1, dirY: 1 }),
-  interval(150)
-).pipe(
+  interval(150),
+]).pipe(
   map(
     ([ball, _]: [Ball, number]) => (
       (ball.dirX *= ball.x > 0 ? 1 : -1),
@@ -57,17 +57,25 @@ const ball$ = combineLatest(
   )
 );
 
-const bricks$ = generate(
-  1,
-  (x) => x < 8,
-  (x) => x + 1
-).pipe(
+const bricks$ = generate({
+  initialState: 1,
+  condition(value) {
+    return value < 8;
+  },
+  iterate(value) {
+    return value + 1;
+  },
+}).pipe(
   mergeMap((r) =>
-    generate(
-      r % 2 === 0 ? 1 : 0,
-      (x) => x < gameSize,
-      (x) => x + 2
-    ).pipe(map((c) => createGameObject(r, c)))
+    generate({
+      initialState: r % 2 === 0 ? 1 : 0,
+      condition(x) {
+        return x < gameSize;
+      },
+      iterate(x) {
+        return x + 2;
+      },
+    }).pipe(map((c) => createGameObject(r, c)))
   ),
   toArray()
 );
@@ -87,7 +95,7 @@ const processGameCollisions = (
   [player, ball, bricks]
 );
 
-combineLatest(player$, ball$, bricks$)
+combineLatest([player$, ball$, bricks$])
   .pipe(
     scan<[Player, Ball, GameObject[]], [Player, Ball, GameObject[]]>(
       processGameCollisions
